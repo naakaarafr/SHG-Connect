@@ -2,8 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Users, Shield, Heart } from "lucide-react";
 import communityFunds from "@/assets/community-funds.jpg";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const CTASection = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
   return (
     <section className="py-24 bg-gradient-to-br from-primary/5 to-success/5">
       <div className="container mx-auto px-4">
@@ -25,16 +30,18 @@ const CTASection = () => {
             <Button 
               size="lg" 
               className="bg-gradient-hero hover:shadow-glow transition-all duration-300 text-lg px-8 py-4 group"
+              onClick={() => navigate(user ? '/dashboard' : '/auth')}
             >
-              Start Connecting Now
+              {user ? 'Go to Dashboard' : 'Start Connecting Now'}
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button 
               variant="outline" 
               size="lg"
               className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-smooth text-lg px-8 py-4"
+              onClick={() => navigate(user ? '/dashboard' : '/auth')}
             >
-              Learn More
+              {user ? 'Find SHGs' : 'Learn More'}
             </Button>
           </div>
 

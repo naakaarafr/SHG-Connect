@@ -1,7 +1,12 @@
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-shg-meeting.jpg";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -35,15 +40,17 @@ const HeroSection = () => {
             <Button 
               size="lg" 
               className="bg-gradient-hero hover:shadow-glow transition-all duration-300 text-lg px-8 py-4"
+              onClick={() => navigate(user ? '/dashboard' : '/auth')}
             >
-              Join SHG Network
+              {user ? 'Go to Dashboard' : 'Join SHG Network'}
             </Button>
             <Button 
               variant="outline" 
               size="lg"
               className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-smooth text-lg px-8 py-4"
+              onClick={() => navigate(user ? '/dashboard' : '/auth')}
             >
-              Discover SHGs
+              {user ? 'Find SHGs' : 'Discover SHGs'}
             </Button>
           </div>
 

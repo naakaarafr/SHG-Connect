@@ -49,22 +49,33 @@ const Auth = () => {
     setIsLoading(true);
     setAuthError('');
 
-    const { error } = await signUp(data.email, data.password, {
-      full_name: data.fullName,
-      phone: data.phone
-    });
+    try {
+      const { error } = await signUp(data.email, data.password, {
+        full_name: data.fullName,
+        phone: data.phone
+      });
 
-    if (error) {
-      setAuthError(error.message);
+      if (error) {
+        console.error('Sign up error:', error);
+        setAuthError(error.message);
+        toast({
+          title: 'Sign up failed',
+          description: error.message,
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Account created!',
+          description: 'Please check your email for verification link.',
+        });
+      }
+    } catch (err) {
+      console.error('Unexpected error during sign up:', err);
+      setAuthError('An unexpected error occurred');
       toast({
         title: 'Sign up failed',
-        description: error.message,
+        description: 'An unexpected error occurred',
         variant: 'destructive'
-      });
-    } else {
-      toast({
-        title: 'Account created!',
-        description: 'Please check your email for verification link.',
       });
     }
 
@@ -75,21 +86,32 @@ const Auth = () => {
     setIsLoading(true);
     setAuthError('');
 
-    const { error } = await signIn(data.email, data.password);
+    try {
+      const { error } = await signIn(data.email, data.password);
 
-    if (error) {
-      setAuthError(error.message);
+      if (error) {
+        console.error('Sign in error:', error);
+        setAuthError(error.message);
+        toast({
+          title: 'Sign in failed',
+          description: error.message,
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: 'Welcome back!',
+          description: 'Successfully signed in.',
+        });
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Unexpected error during sign in:', err);
+      setAuthError('An unexpected error occurred');
       toast({
         title: 'Sign in failed',
-        description: error.message,
+        description: 'An unexpected error occurred',
         variant: 'destructive'
       });
-    } else {
-      toast({
-        title: 'Welcome back!',
-        description: 'Successfully signed in.',
-      });
-      navigate('/');
     }
 
     setIsLoading(false);
