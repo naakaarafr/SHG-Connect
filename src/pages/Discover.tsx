@@ -32,16 +32,22 @@ const Discover = () => {
   const [stateFilter, setStateFilter] = useState('all');
 
   useEffect(() => {
-    fetchSHGs();
-  }, []);
+    if (user) {
+      fetchSHGs();
+    }
+  }, [user]);
 
   useEffect(() => {
     filterSHGs();
   }, [shgs, searchTerm, focusFilter, stateFilter]);
 
   const fetchSHGs = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
