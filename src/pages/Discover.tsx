@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, MapPin, Users, Search, Filter } from 'lucide-react';
+import { Loader2, MapPin, Users, Search, Filter, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface SHG {
   id: string;
@@ -19,11 +20,14 @@ interface SHG {
   member_count?: number;
   distance_km?: number;
   description?: string;
+  created_by?: string;
+  contact_email?: string;
 }
 
 const Discover = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [shgs, setShgs] = useState<SHG[]>([]);
   const [filteredShgs, setFilteredShgs] = useState<SHG[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,12 +38,48 @@ const Discover = () => {
   useEffect(() => {
     if (user) {
       fetchSHGs();
+      setupRealtimeSubscription();
     }
   }, [user]);
 
   useEffect(() => {
     filterSHGs();
   }, [shgs, searchTerm, focusFilter, stateFilter]);
+
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel('shgs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shgs'
+        },
+        (payload) => {
+          console.log('SHG change detected:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setShgs(prev => [payload.new as SHG, ...prev]);
+            toast({
+              title: 'New SHG Available!',
+              description: `${payload.new.name} has joined the platform`,
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setShgs(prev => prev.map(shg => 
+              shg.id === payload.new.id ? payload.new as SHG : shg
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setShgs(prev => prev.filter(shg => shg.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const fetchSHGs = async () => {
     if (!user) {
@@ -131,6 +171,71 @@ const Discover = () => {
 
   const uniqueStates = [...new Set(shgs.map(shg => shg.state).filter(Boolean))];
   const uniqueFocusAreas = [...new Set(shgs.flatMap(shg => shg.focus_areas || []))];
+
+  const handleConnect = async (shg: SHG) => {
+    if (!user || !shg.created_by) {
+      toast({
+        title: 'Connection Failed',
+        description: 'Unable to connect to this SHG at the moment',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (shg.created_by === user.id) {
+      toast({
+        title: 'That\'s Your SHG!',
+        description: 'You cannot connect to your own SHG',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      // Check if conversation already exists
+      const { data: existingMessages, error: checkError } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${shg.created_by}),and(sender_id.eq.${shg.created_by},recipient_id.eq.${user.id})`)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      let conversationExists = existingMessages && existingMessages.length > 0;
+
+      if (!conversationExists) {
+        // Create initial connection message
+        const { error: messageError } = await supabase
+          .from('messages')
+          .insert({
+            sender_id: user.id,
+            recipient_id: shg.created_by,
+            content: `Hi! I'm interested in connecting with ${shg.name}. I'd love to learn more about your group and how I can get involved.`,
+            read: false
+          });
+
+        if (messageError) throw messageError;
+      }
+
+      // Navigate to chat
+      navigate('/chat');
+      
+      toast({
+        title: 'Connection Initiated!',
+        description: conversationExists 
+          ? 'Opened existing conversation' 
+          : `Sent connection message to ${shg.name}`,
+      });
+
+    } catch (error) {
+      console.error('Error connecting to SHG:', error);
+      toast({
+        title: 'Connection Failed',
+        description: 'Unable to connect to this SHG. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -246,7 +351,12 @@ const Discover = () => {
                     <Users className="h-4 w-4" />
                     {shg.member_count || 0} members
                   </div>
-                  <Button size="sm" className="bg-gradient-hero hover:shadow-glow">
+                  <Button 
+                    size="sm" 
+                    className="bg-gradient-hero hover:shadow-glow"
+                    onClick={() => handleConnect(shg)}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" />
                     Connect
                   </Button>
                 </div>
