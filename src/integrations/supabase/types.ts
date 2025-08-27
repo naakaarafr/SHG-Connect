@@ -822,12 +822,14 @@ export type Database = {
         Returns: boolean
       }
       nearby_shgs: {
-        Args: { lat: number; lon: number; radius_km?: number }
+        Args: { lat: number; lon: number; radius_km: number }
         Returns: {
+          description: string
           distance_km: number
           focus_areas: string[]
           id: string
           leader_name: string
+          member_count: number
           name: string
           state: string
           village: string
