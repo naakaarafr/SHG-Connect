@@ -90,19 +90,8 @@ const Community = () => {
       if (trackError) throw trackError;
       setTrackRecords(trackData || []);
 
-      // Fetch recent members
-      const { data, error } = await supabase
-        .from('shg_members')
-        .select(`
-          role_in_shg,
-          joined_at,
-          shg_id,
-          user_id
-        `)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setMembers(data || []);
+      // Members are shown in the placeholder tab, no need to fetch
+      setMembers([]);
 
     } catch (error) {
       console.error('Error fetching community data:', error);
