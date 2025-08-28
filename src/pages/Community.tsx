@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SHGDetailsDialog } from '@/components/ui/shg-details-dialog';
 import { Loader2, Users, TrendingUp, Calendar, Award, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,6 +59,8 @@ const Community = () => {
   const [trackRecords, setTrackRecords] = useState<TrackRecord[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSHG, setSelectedSHG] = useState<SHG | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -238,7 +241,14 @@ const Community = () => {
                       <span className="text-xs text-muted-foreground">
                         Created {new Date(shg.created_at).toLocaleDateString()}
                       </span>
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedSHG(shg);
+                          setDialogOpen(true);
+                        }}
+                      >
                         View Details
                       </Button>
                     </div>
@@ -323,6 +333,16 @@ const Community = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* SHG Details Dialog */}
+        <SHGDetailsDialog 
+          shg={selectedSHG}
+          isOpen={dialogOpen}
+          onClose={() => {
+            setDialogOpen(false);
+            setSelectedSHG(null);
+          }}
+        />
       </div>
     </div>
   );
