@@ -179,7 +179,17 @@ const Discover = () => {
     setFilteredShgs(filtered);
   };
 
-  const uniqueStates = [...new Set(shgs.map(shg => shg.state).filter(Boolean))];
+  const allIndianStates = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+    // Union Territories
+    'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 
+    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+  ];
+
   const uniqueFocusAreas = [...new Set(shgs.flatMap(shg => shg.focus_areas || []))];
 
   const handleConnect = async (shg: SHG) => {
@@ -302,7 +312,7 @@ const Discover = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by focus area" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border shadow-lg z-50 max-h-60 overflow-y-auto">
                   <SelectItem value="all">All Focus Areas</SelectItem>
                   {uniqueFocusAreas.map(area => (
                     <SelectItem key={area} value={area}>{area}</SelectItem>
@@ -313,9 +323,9 @@ const Discover = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by state" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All States</SelectItem>
-                  {uniqueStates.map(state => (
+                <SelectContent className="bg-background border shadow-lg z-50 max-h-60 overflow-y-auto">
+                  <SelectItem value="all">All States & UTs</SelectItem>
+                  {allIndianStates.map(state => (
                     <SelectItem key={state} value={state}>{state}</SelectItem>
                   ))}
                 </SelectContent>
