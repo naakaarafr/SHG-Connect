@@ -36,11 +36,9 @@ const Discover = () => {
   const [stateFilter, setStateFilter] = useState('all');
 
   useEffect(() => {
-    if (user) {
-      fetchSHGs();
-      setupRealtimeSubscription();
-    }
-  }, [user]);
+    fetchSHGs();
+    setupRealtimeSubscription();
+  }, []);
 
   useEffect(() => {
     filterSHGs();
@@ -82,11 +80,6 @@ const Discover = () => {
   };
 
   const fetchSHGs = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -173,7 +166,17 @@ const Discover = () => {
   const uniqueFocusAreas = [...new Set(shgs.flatMap(shg => shg.focus_areas || []))];
 
   const handleConnect = async (shg: SHG) => {
-    if (!user || !shg.created_by) {
+    if (!user) {
+      toast({
+        title: 'Login Required',
+        description: 'Please log in to connect with SHGs',
+        variant: 'destructive'
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (!shg.created_by) {
       toast({
         title: 'Connection Failed',
         description: 'Unable to connect to this SHG at the moment',
