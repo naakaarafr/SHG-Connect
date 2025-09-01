@@ -20,6 +20,7 @@ interface SHG {
   member_count?: number;
   description?: string;
   created_at: string;
+  created_by?: string;
 }
 
 interface TrackRecord {
@@ -73,7 +74,7 @@ const Community = () => {
       // Fetch recent SHGs
       const { data: shgData, error: shgError } = await supabase
         .from('shgs')
-        .select('*')
+        .select('*, created_by')
         .order('created_at', { ascending: false })
         .limit(6);
 
