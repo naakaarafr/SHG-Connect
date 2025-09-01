@@ -1,0 +1,2 @@
+-- Remove sample data, keep only user-created SHGs
+DELETE FROM public.shgs WHERE created_by = 'e7f0db41-f1a9-42ba-b244-67cb529deef5' AND name IN ('Mahila Shakti SHG', 'Krishak Vikas Group', 'Swavlamban SHG', 'Grameen Shakti Mandal', 'Udyami Mahila Sangh');

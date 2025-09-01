@@ -105,9 +105,20 @@ const Discover = () => {
         radius_km: 100
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error with nearby SHGs function:', error);
+        // Fallback to all SHGs if the function fails
+        await fetchAllSHGs();
+        return;
+      }
       
-      setShgs(data || []);
+      // If no nearby SHGs found, fetch all SHGs as fallback
+      if (!data || data.length === 0) {
+        console.log('No nearby SHGs found, fetching all SHGs');
+        await fetchAllSHGs();
+      } else {
+        setShgs(data);
+      }
     } catch (error) {
       console.error('Error fetching nearby SHGs:', error);
       await fetchAllSHGs();
@@ -142,21 +153,27 @@ const Discover = () => {
     let filtered = shgs;
 
     if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(shg =>
-        shg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shg.village?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shg.state?.toLowerCase().includes(searchTerm.toLowerCase())
+        shg.name?.toLowerCase().includes(searchLower) ||
+        shg.village?.toLowerCase().includes(searchLower) ||
+        shg.state?.toLowerCase().includes(searchLower) ||
+        shg.leader_name?.toLowerCase().includes(searchLower) ||
+        shg.description?.toLowerCase().includes(searchLower) ||
+        shg.focus_areas?.some(area => area.toLowerCase().includes(searchLower))
       );
     }
 
     if (focusFilter !== 'all') {
       filtered = filtered.filter(shg =>
-        shg.focus_areas?.includes(focusFilter)
+        shg.focus_areas?.some(area => area.toLowerCase() === focusFilter.toLowerCase())
       );
     }
 
     if (stateFilter !== 'all') {
-      filtered = filtered.filter(shg => shg.state === stateFilter);
+      filtered = filtered.filter(shg => 
+        shg.state?.toLowerCase() === stateFilter.toLowerCase()
+      );
     }
 
     setFilteredShgs(filtered);
@@ -368,13 +385,24 @@ const Discover = () => {
           ))}
         </div>
 
-        {filteredShgs.length === 0 && (
+        {filteredShgs.length === 0 && !loading && (
           <div className="text-center py-12">
             <MapPin className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
             <h3 className="text-lg font-semibold mb-2">No SHGs found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search criteria or check back later.
+            <p className="text-muted-foreground mb-4">
+              {shgs.length === 0 
+                ? "No Self-Help Groups have been created yet. Be the first to create one!"
+                : "Try adjusting your search criteria to find more SHGs."
+              }
             </p>
+            {shgs.length === 0 && (
+              <Button 
+                onClick={() => navigate('/create-shg')}
+                className="bg-gradient-hero hover:shadow-glow"
+              >
+                Create First SHG
+              </Button>
+            )}
           </div>
         )}
       </div>
