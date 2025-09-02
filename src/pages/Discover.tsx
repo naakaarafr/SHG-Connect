@@ -131,7 +131,7 @@ const Discover = () => {
     try {
       const { data, error } = await supabase
         .from('shgs')
-        .select('*')
+        .select('*, created_by')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
