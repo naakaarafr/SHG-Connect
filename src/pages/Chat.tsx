@@ -38,14 +38,46 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [typingUsers, setTypingUsers] = useState<Map<string, boolean>>(new Map());
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchProfiles();
       fetchMessages();
-      setupRealtimeSubscription();
+      const cleanup = setupRealtimeSubscription();
+      
+      return cleanup;
     }
   }, [user]);
+
+  // Mark messages as read when viewing a chat
+  useEffect(() => {
+    if (selectedChat && user) {
+      markMessagesAsRead();
+    }
+  }, [selectedChat, user]);
+
+  // Handle typing indicator
+  useEffect(() => {
+    let typingTimeout: NodeJS.Timeout;
+    
+    if (newMessage && selectedChat) {
+      if (!isTyping) {
+        setIsTyping(true);
+        broadcastTypingStatus(true);
+      }
+      
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        setIsTyping(false);
+        broadcastTypingStatus(false);
+      }, 1000);
+    }
+    
+    return () => clearTimeout(typingTimeout);
+  }, [newMessage, selectedChat, isTyping]);
 
   const fetchProfiles = async () => {
     try {
@@ -86,8 +118,13 @@ const Chat = () => {
   };
 
   const setupRealtimeSubscription = () => {
-    const channel = supabase
-      .channel('messages')
+    if (!user) return () => {};
+
+    console.log('Setting up realtime subscriptions for user:', user.id);
+
+    // Messages subscription
+    const messagesChannel = supabase
+      .channel('messages-changes')
       .on(
         'postgres_changes',
         {
@@ -96,17 +133,127 @@ const Chat = () => {
           table: 'messages',
         },
         (payload) => {
+          console.log('New message received:', payload);
           const newMessage = payload.new as Message;
-          if (newMessage.sender_id === user?.id || newMessage.recipient_id === user?.id) {
+          if (newMessage.sender_id === user.id || newMessage.recipient_id === user.id) {
             setMessages(prev => [...prev, newMessage]);
+            
+            // Show notification for received messages
+            if (newMessage.sender_id !== user.id) {
+              const sender = profiles.find(p => p.id === newMessage.sender_id);
+              toast({
+                title: 'New Message',
+                description: `${sender?.full_name || 'Someone'}: ${newMessage.content}`,
+              });
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          console.log('Message updated:', payload);
+          const updatedMessage = payload.new as Message;
+          if (updatedMessage.sender_id === user.id || updatedMessage.recipient_id === user.id) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === updatedMessage.id ? updatedMessage : msg
+            ));
           }
         }
       )
       .subscribe();
 
+    // Presence channel for online status and typing indicators
+    const presenceChannel = supabase
+      .channel('chat-presence')
+      .on('presence', { event: 'sync' }, () => {
+        console.log('Presence sync');
+        const newState = presenceChannel.presenceState();
+        const onlineIds = new Set<string>();
+        const typingState = new Map<string, boolean>();
+        
+        Object.keys(newState).forEach(userId => {
+          const presences = newState[userId] as any[];
+          if (presences.length > 0) {
+            onlineIds.add(userId);
+            const latestPresence = presences[presences.length - 1];
+            if (latestPresence.typing) {
+              typingState.set(userId, true);
+            }
+          }
+        });
+        
+        setOnlineUsers(onlineIds);
+        setTypingUsers(typingState);
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('User joined:', key, newPresences);
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('User left:', key, leftPresences);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Tracking presence for user:', user.id);
+          await presenceChannel.track({
+            user_id: user.id,
+            online_at: new Date().toISOString(),
+            typing: false
+          });
+        }
+      });
+
     return () => {
-      supabase.removeChannel(channel);
+      console.log('Cleaning up realtime subscriptions');
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(presenceChannel);
     };
+  };
+
+  const markMessagesAsRead = async () => {
+    if (!selectedChat || !user) return;
+
+    try {
+      const unreadMessages = messages.filter(msg => 
+        msg.sender_id === selectedChat && 
+        msg.recipient_id === user.id && 
+        !msg.read
+      );
+
+      if (unreadMessages.length > 0) {
+        const { error } = await supabase
+          .from('messages')
+          .update({ read: true })
+          .in('id', unreadMessages.map(msg => msg.id));
+
+        if (error) throw error;
+        console.log(`Marked ${unreadMessages.length} messages as read`);
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
+  const broadcastTypingStatus = async (typing: boolean) => {
+    if (!user) return;
+
+    try {
+      const presenceChannel = supabase.channel('chat-presence');
+      await presenceChannel.track({
+        user_id: user.id,
+        online_at: new Date().toISOString(),
+        typing,
+        typing_to: selectedChat
+      });
+      console.log('Typing status broadcasted:', typing);
+    } catch (error) {
+      console.error('Error broadcasting typing status:', error);
+    }
   };
 
   const sendMessage = async () => {
@@ -224,24 +371,49 @@ const Chat = () => {
                     }`}
                     onClick={() => setSelectedChat(otherUserId)}
                   >
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>
-                          {profile?.full_name?.[0] || profile?.email?.[0] || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
-                          {profile?.full_name || profile?.email || 'Unknown User'}
-                        </p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {message.content}
-                        </p>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(message.timestamp).toLocaleDateString()}
-                      </div>
-                    </div>
+                     <div className="flex items-center gap-3">
+                       <div className="relative">
+                         <Avatar>
+                           <AvatarFallback>
+                             {profile?.full_name?.[0] || profile?.email?.[0] || '?'}
+                           </AvatarFallback>
+                         </Avatar>
+                         {onlineUsers.has(otherUserId) && (
+                           <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
+                         )}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <div className="flex items-center gap-2">
+                           <p className="font-medium truncate">
+                             {profile?.full_name || profile?.email || 'Unknown User'}
+                           </p>
+                           {typingUsers.get(otherUserId) && (
+                             <Badge variant="secondary" className="text-xs">typing...</Badge>
+                           )}
+                         </div>
+                         <p className="text-sm text-muted-foreground truncate">
+                           {message.content}
+                         </p>
+                       </div>
+                       <div className="flex flex-col items-end gap-1">
+                         <div className="text-xs text-muted-foreground">
+                           {new Date(message.timestamp).toLocaleDateString()}
+                         </div>
+                         {/* Unread message count */}
+                         {(() => {
+                           const unreadCount = messages.filter(msg => 
+                             msg.sender_id === otherUserId && 
+                             msg.recipient_id === user?.id && 
+                             !msg.read
+                           ).length;
+                           return unreadCount > 0 ? (
+                             <Badge variant="destructive" className="text-xs min-w-5 h-5 flex items-center justify-center">
+                               {unreadCount > 9 ? '9+' : unreadCount}
+                             </Badge>
+                           ) : null;
+                         })()}
+                       </div>
+                     </div>
                   </div>
                 );
               })}
@@ -255,21 +427,26 @@ const Chat = () => {
                     className="p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors"
                     onClick={() => setSelectedChat(profile.id)}
                   >
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>
-                          {profile.full_name?.[0] || profile.email?.[0] || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
-                          {profile.full_name || 'Unnamed User'}
-                        </p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {profile.email}
-                        </p>
-                      </div>
-                    </div>
+                     <div className="flex items-center gap-3">
+                       <div className="relative">
+                         <Avatar>
+                           <AvatarFallback>
+                             {profile.full_name?.[0] || profile.email?.[0] || '?'}
+                           </AvatarFallback>
+                         </Avatar>
+                         {onlineUsers.has(profile.id) && (
+                           <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
+                         )}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <p className="font-medium truncate">
+                           {profile.full_name || 'Unnamed User'}
+                         </p>
+                         <p className="text-sm text-muted-foreground truncate">
+                           {onlineUsers.has(profile.id) ? 'Online' : profile.email}
+                         </p>
+                       </div>
+                     </div>
                   </div>
                 ))}
               </div>
@@ -280,49 +457,75 @@ const Chat = () => {
           <Card className="lg:col-span-2">
             {selectedChat ? (
               <>
-                <CardHeader className="border-b">
-                  <CardTitle className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback>
-                        {profiles.find(p => p.id === selectedChat)?.full_name?.[0] || 
-                         profiles.find(p => p.id === selectedChat)?.email?.[0] || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">
-                        {profiles.find(p => p.id === selectedChat)?.full_name || 'Unknown User'}
-                      </p>
-                      <p className="text-sm text-muted-foreground font-normal">
-                        {profiles.find(p => p.id === selectedChat)?.email}
-                      </p>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col h-full">
-                  {/* Messages */}
-                  <div className="flex-1 space-y-4 p-4 max-h-[450px] overflow-y-auto">
-                    {getMessagesForChat().map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            message.sender_id === user?.id
-                              ? 'bg-gradient-hero text-primary-foreground'
-                              : 'bg-muted'
-                          }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
-                          <p className={`text-xs mt-1 ${
-                            message.sender_id === user?.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                          }`}>
-                            {new Date(message.timestamp).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                 <CardHeader className="border-b">
+                   <CardTitle className="flex items-center gap-3">
+                     <div className="relative">
+                       <Avatar>
+                         <AvatarFallback>
+                           {profiles.find(p => p.id === selectedChat)?.full_name?.[0] || 
+                            profiles.find(p => p.id === selectedChat)?.email?.[0] || '?'}
+                         </AvatarFallback>
+                       </Avatar>
+                       {onlineUsers.has(selectedChat) && (
+                         <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></div>
+                       )}
+                     </div>
+                     <div>
+                       <p className="font-medium">
+                         {profiles.find(p => p.id === selectedChat)?.full_name || 'Unknown User'}
+                       </p>
+                       <p className="text-sm text-muted-foreground font-normal">
+                         {onlineUsers.has(selectedChat) ? 'Online' : profiles.find(p => p.id === selectedChat)?.email}
+                       </p>
+                     </div>
+                   </CardTitle>
+                 </CardHeader>
+                 <CardContent className="flex flex-col h-full">
+                   {/* Messages */}
+                   <div className="flex-1 space-y-4 p-4 max-h-[450px] overflow-y-auto">
+                     {getMessagesForChat().map((message) => (
+                       <div
+                         key={message.id}
+                         className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                       >
+                         <div
+                           className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                             message.sender_id === user?.id
+                               ? 'bg-gradient-hero text-primary-foreground'
+                               : 'bg-muted'
+                           }`}
+                         >
+                           <p className="text-sm">{message.content}</p>
+                           <div className={`flex items-center justify-between text-xs mt-1 ${
+                             message.sender_id === user?.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                           }`}>
+                             <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+                             {message.sender_id === user?.id && (
+                               <span className="ml-2">
+                                 {message.read ? '✓✓' : '✓'}
+                               </span>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                     
+                     {/* Typing Indicator */}
+                     {typingUsers.get(selectedChat) && (
+                       <div className="flex justify-start">
+                         <div className="bg-muted px-4 py-2 rounded-lg">
+                           <div className="flex items-center gap-1">
+                             <div className="flex gap-1">
+                               <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                               <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                               <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                             </div>
+                             <span className="text-xs text-muted-foreground ml-2">typing...</span>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                   </div>
                   
                   {/* Message Input */}
                   <div className="flex gap-2 p-4 border-t">
