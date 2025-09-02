@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus, X, Users, MapPin, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,6 +30,7 @@ const CreateSHG = () => {
   });
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [newFocusArea, setNewFocusArea] = useState('');
+  const [memberCount, setMemberCount] = useState<string>('5');
 
   const commonFocusAreas = [
     'Microfinance', 'Agriculture', 'Handicrafts', 'Women Empowerment',
@@ -96,7 +98,7 @@ const CreateSHG = () => {
           contact_phone: formData.contact_phone,
           formation_date: formData.formation_date || new Date().toISOString().split('T')[0],
           focus_areas: focusAreas,
-          member_count: 1,
+          member_count: parseInt(memberCount),
           created_by: user.id,
           location: `POINT(${mockLon} ${mockLat})`
         })
@@ -205,6 +207,34 @@ const CreateSHG = () => {
                       onChange={handleInputChange}
                       required
                     />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="member_count">Number of Members</Label>
+                    <Select value={memberCount} onValueChange={setMemberCount}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select number of members" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 members</SelectItem>
+                        <SelectItem value="4">4 members</SelectItem>
+                        <SelectItem value="5">5 members</SelectItem>
+                        <SelectItem value="6">6 members</SelectItem>
+                        <SelectItem value="7">7 members</SelectItem>
+                        <SelectItem value="8">8 members</SelectItem>
+                        <SelectItem value="9">9 members</SelectItem>
+                        <SelectItem value="10">10 members</SelectItem>
+                        <SelectItem value="11">11 members</SelectItem>
+                        <SelectItem value="12">12 members</SelectItem>
+                        <SelectItem value="15">15 members</SelectItem>
+                        <SelectItem value="20">20 members</SelectItem>
+                        <SelectItem value="25">25 members</SelectItem>
+                        <SelectItem value="30">30+ members</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Typical SHGs have 5-20 members. You can update this count later as your group grows.
+                    </p>
                   </div>
                 </div>
 
