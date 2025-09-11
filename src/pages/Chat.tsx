@@ -52,10 +52,12 @@ const Chat = () => {
     }
   }, [user]);
 
-  // Mark messages as read when viewing a chat
+  // Mark messages as read when viewing a chat and clear unseen count
   useEffect(() => {
     if (selectedChat && user) {
       markMessagesAsRead();
+      // Force re-render to clear unseen count in UI
+      setMessages(prev => [...prev]);
     }
   }, [selectedChat, user]);
 
