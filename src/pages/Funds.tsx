@@ -130,7 +130,16 @@ const Funds = () => {
     if (isNaN(amount) || amount <= 0) {
       toast({
         title: 'Invalid amount',
-        description: 'Please enter a valid amount',
+        description: 'Please enter a valid positive amount',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (selectedSender === selectedRecipient) {
+      toast({
+        title: 'Invalid transaction',
+        description: 'Cannot send funds to the same SHG',
         variant: 'destructive'
       });
       return;
@@ -148,11 +157,44 @@ const Funds = () => {
           payment_method: 'bank_transfer'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Transaction error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('violates row-level security')) {
+          toast({
+            title: 'Access denied',
+            description: 'You can only send funds from SHGs you are a member of',
+            variant: 'destructive'
+          });
+        } else if (error.message.includes('transactions_amount_positive')) {
+          toast({
+            title: 'Invalid amount',
+            description: 'Amount must be greater than zero',
+            variant: 'destructive'
+          });
+        } else if (error.message.includes('transactions_different_shgs')) {
+          toast({
+            title: 'Invalid transaction',
+            description: 'Sender and recipient SHGs must be different',
+            variant: 'destructive'
+          });
+        } else {
+          toast({
+            title: 'Transaction failed',
+            description: error.message || 'Failed to create transaction',
+            variant: 'destructive'
+          });
+        }
+        return;
+      }
+
+      const recipientShg = availableShgs.find(shg => shg.id === selectedRecipient);
+      const senderShg = userShgs.find(shg => shg.id === selectedSender);
 
       toast({
         title: 'Fund transfer initiated',
-        description: 'Your fund transfer request has been submitted',
+        description: `₹${amount.toLocaleString()} transfer from ${senderShg?.name} to ${recipientShg?.name} has been submitted`,
       });
 
       // Reset form
@@ -168,7 +210,7 @@ const Funds = () => {
       console.error('Error sending funds:', error);
       toast({
         title: 'Transfer failed',
-        description: 'Failed to initiate fund transfer',
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive'
       });
     }
