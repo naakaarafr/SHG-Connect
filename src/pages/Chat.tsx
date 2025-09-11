@@ -227,15 +227,23 @@ const Chat = () => {
         !msg.read
       );
 
-      if (unreadMessages.length > 0) {
-        const { error } = await supabase
-          .from('messages')
-          .update({ read: true })
-          .in('id', unreadMessages.map(msg => msg.id));
+      if (unreadMessages.length === 0) return;
 
-        if (error) throw error;
-        console.log(`Marked ${unreadMessages.length} messages as read`);
-      }
+      const ids = unreadMessages.map(msg => msg.id);
+
+      const { error } = await supabase
+        .from('messages')
+        .update({ read: true })
+        .in('id', ids);
+
+      if (error) throw error;
+
+      // Optimistically update local state so badges clear immediately
+      setMessages(prev =>
+        prev.map(m => (ids.includes(m.id) ? { ...m, read: true } : m))
+      );
+
+      console.log(`Marked ${unreadMessages.length} messages as read`);
     } catch (error) {
       console.error('Error marking messages as read:', error);
     }
