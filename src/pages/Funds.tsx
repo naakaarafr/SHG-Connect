@@ -216,6 +216,40 @@ const Funds = () => {
     }
   };
 
+  const updateTransactionStatus = async (transactionId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ status: newStatus })
+        .eq('id', transactionId);
+
+      if (error) {
+        console.error('Status update error:', error);
+        toast({
+          title: 'Update failed',
+          description: 'Failed to update transaction status',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      toast({
+        title: 'Status updated',
+        description: `Transaction marked as ${newStatus}`,
+      });
+
+      // Refresh transactions
+      fetchTransactions();
+    } catch (error) {
+      console.error('Error updating transaction status:', error);
+      toast({
+        title: 'Update failed',
+        description: 'An unexpected error occurred',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const getTransactionStats = () => {
     const totalSent = transactions
       .filter(t => userShgs.some(shg => shg.id === t.sender_shg_id))
@@ -389,6 +423,7 @@ const Funds = () => {
                 {transactions.map((transaction) => {
                   const isSent = userShgs.some(shg => shg.id === transaction.sender_shg_id);
                   const isReceived = userShgs.some(shg => shg.id === transaction.recipient_shg_id);
+                  const canUpdateStatus = isSent || isReceived;
                   
                   return (
                     <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -410,22 +445,45 @@ const Funds = () => {
                           <p className="text-sm text-muted-foreground">
                             {new Date(transaction.created_at).toLocaleDateString()} • 
                             {transaction.payment_method || 'Bank Transfer'}
+                            {transaction.transaction_id && ` • ID: ${transaction.transaction_id}`}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className={`font-semibold ${isSent ? 'text-destructive' : 'text-success'}`}>
-                          {isSent ? '-' : '+'}₹{transaction.amount.toLocaleString()}
-                        </p>
-                        <Badge 
-                          variant={
-                            transaction.status === 'completed' ? 'default' : 
-                            transaction.status === 'pending' ? 'secondary' : 'destructive'
-                          }
-                          className="text-xs"
-                        >
-                          {transaction.status}
-                        </Badge>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className={`font-semibold ${isSent ? 'text-destructive' : 'text-success'}`}>
+                            {isSent ? '-' : '+'}₹{transaction.amount.toLocaleString()}
+                          </p>
+                          <Badge 
+                            variant={
+                              transaction.status === 'completed' ? 'default' : 
+                              transaction.status === 'pending' ? 'secondary' : 'destructive'
+                            }
+                            className="text-xs"
+                          >
+                            {transaction.status}
+                          </Badge>
+                        </div>
+                        {canUpdateStatus && transaction.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateTransactionStatus(transaction.id, 'completed')}
+                            >
+                              Mark Complete
+                            </Button>
+                            {isSent && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateTransactionStatus(transaction.id, 'cancelled')}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
