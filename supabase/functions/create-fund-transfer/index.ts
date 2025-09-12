@@ -31,16 +31,26 @@ serve(async (req) => {
     logStep("Request data received", { amount, senderShgId, recipientShgId, purpose });
 
     // Validate input
+    const MIN_INR = 50;
     if (!amount || !senderShgId || !recipientShgId) {
-      throw new Error("Missing required fields: amount, senderShgId, recipientShgId");
+      return new Response(JSON.stringify({ error: "Missing required fields: amount, senderShgId, recipientShgId" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
-    if (amount <= 0) {
-      throw new Error("Amount must be greater than zero");
+    if (amount < MIN_INR) {
+      return new Response(JSON.stringify({ error: `Minimum amount is ₹${MIN_INR} due to Stripe minimum charge.` }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     if (senderShgId === recipientShgId) {
-      throw new Error("Cannot transfer funds to the same SHG");
+      return new Response(JSON.stringify({ error: "Cannot transfer funds to the same SHG" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     // Authenticate user

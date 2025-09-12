@@ -178,10 +178,11 @@ const Funds = () => {
     }
 
     const amount = parseFloat(sendAmount);
-    if (isNaN(amount) || amount <= 0) {
+    const MIN_INR = 50;
+    if (isNaN(amount) || amount < MIN_INR) {
       toast({
         title: 'Invalid amount',
-        description: 'Please enter a valid positive amount',
+        description: `Minimum transfer is ₹${MIN_INR} due to Stripe limits`,
         variant: 'destructive'
       });
       return;
@@ -212,6 +213,15 @@ const Funds = () => {
         toast({
           title: 'Payment failed',
           description: error.message || 'Failed to create payment session',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (data?.error) {
+        toast({
+          title: 'Payment blocked',
+          description: data.error,
           variant: 'destructive'
         });
         return;
@@ -382,6 +392,8 @@ const Funds = () => {
                       id="amount"
                       type="number"
                       placeholder="Enter amount"
+                      min={50}
+                      step={1}
                       value={sendAmount}
                       onChange={(e) => setSendAmount(e.target.value)}
                     />
