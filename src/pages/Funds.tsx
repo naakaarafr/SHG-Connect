@@ -54,8 +54,59 @@ const Funds = () => {
       fetchTransactions();
       fetchUserShgs();
       fetchAvailableShgs();
+      
+      // Check for successful payment
+      const urlParams = new URLSearchParams(window.location.search);
+      const success = urlParams.get('success');
+      const sessionId = urlParams.get('session_id');
+      
+      if (success === 'true' && sessionId) {
+        verifyPayment(sessionId);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
   }, [user]);
+
+  const verifyPayment = async (sessionId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { sessionId }
+      });
+
+      if (error) {
+        console.error('Payment verification error:', error);
+        toast({
+          title: 'Payment verification failed',
+          description: 'Please contact support if payment was processed',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (data?.success) {
+        toast({
+          title: 'Payment successful!',
+          description: 'Fund transfer completed successfully',
+        });
+        // Refresh transactions to show the new completed transaction
+        fetchTransactions();
+      } else {
+        toast({
+          title: 'Payment incomplete',
+          description: 'Payment was not completed successfully',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      toast({
+        title: 'Verification error',
+        description: 'Unable to verify payment status',
+        variant: 'destructive'
+      });
+    }
+  };
 
   const fetchTransactions = async () => {
     if (!user) return;
@@ -146,70 +197,57 @@ const Funds = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .insert({
+      // Create Stripe payment session
+      const { data, error } = await supabase.functions.invoke('create-fund-transfer', {
+        body: {
           amount,
-          currency: 'INR',
-          sender_shg_id: selectedSender,
-          recipient_shg_id: selectedRecipient,
-          status: 'pending',
-          payment_method: 'bank_transfer'
-        });
+          senderShgId: selectedSender,
+          recipientShgId: selectedRecipient,
+          purpose
+        }
+      });
 
       if (error) {
-        console.error('Transaction error:', error);
-        
-        // Handle specific error cases
-        if (error.message.includes('violates row-level security')) {
-          toast({
-            title: 'Access denied',
-            description: 'You can only send funds from SHGs you are a member of',
-            variant: 'destructive'
-          });
-        } else if (error.message.includes('transactions_amount_positive')) {
-          toast({
-            title: 'Invalid amount',
-            description: 'Amount must be greater than zero',
-            variant: 'destructive'
-          });
-        } else if (error.message.includes('transactions_different_shgs')) {
-          toast({
-            title: 'Invalid transaction',
-            description: 'Sender and recipient SHGs must be different',
-            variant: 'destructive'
-          });
-        } else {
-          toast({
-            title: 'Transaction failed',
-            description: error.message || 'Failed to create transaction',
-            variant: 'destructive'
-          });
-        }
+        console.error('Payment session error:', error);
+        toast({
+          title: 'Payment failed',
+          description: error.message || 'Failed to create payment session',
+          variant: 'destructive'
+        });
         return;
       }
 
-      const recipientShg = availableShgs.find(shg => shg.id === selectedRecipient);
-      const senderShg = userShgs.find(shg => shg.id === selectedSender);
+      if (data?.url) {
+        // Open Stripe Checkout in new window
+        const checkoutWindow = window.open(data.url, '_blank');
+        if (!checkoutWindow) {
+          toast({
+            title: 'Popup blocked',
+            description: 'Please allow popups and try again',
+            variant: 'destructive'
+          });
+          return;
+        }
 
-      toast({
-        title: 'Fund transfer initiated',
-        description: `₹${amount.toLocaleString()} transfer from ${senderShg?.name} to ${recipientShg?.name} has been submitted`,
-      });
+        const recipientShg = availableShgs.find(shg => shg.id === selectedRecipient);
+        const senderShg = userShgs.find(shg => shg.id === selectedSender);
 
-      // Reset form
-      setSendAmount('');
-      setSelectedRecipient('');
-      setSelectedSender('');
-      setPurpose('');
-      setIsDialogOpen(false);
+        toast({
+          title: 'Payment initiated',
+          description: `Secure payment for ₹${amount.toLocaleString()} transfer from ${senderShg?.name} to ${recipientShg?.name}`,
+        });
 
-      // Refresh transactions
-      fetchTransactions();
+        // Reset form
+        setSendAmount('');
+        setSelectedRecipient('');
+        setSelectedSender('');
+        setPurpose('');
+        setIsDialogOpen(false);
+      }
     } catch (error) {
-      console.error('Error sending funds:', error);
+      console.error('Error initiating payment:', error);
       toast({
-        title: 'Transfer failed',
+        title: 'Payment failed',
         description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive'
       });
