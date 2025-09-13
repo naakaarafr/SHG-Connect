@@ -797,6 +797,16 @@ export type Database = {
         Args: { "": number }
         Returns: string
       }
+      get_spatial_reference_systems: {
+        Args: { target_srid?: number }
+        Returns: {
+          auth_name: string
+          auth_srid: number
+          proj4text: string
+          srid: number
+          srtext: string
+        }[]
+      }
       gettransactionid: {
         Args: Record<PropertyKey, never>
         Returns: unknown
