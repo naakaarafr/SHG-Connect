@@ -85,6 +85,30 @@ export type Database = {
           },
         ]
       }
+      security_notes: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: number
+          mitigation: string | null
+          note_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: number
+          mitigation?: string | null
+          note_type: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: number
+          mitigation?: string | null
+          note_type?: string
+        }
+        Relationships: []
+      }
       shg_members: {
         Row: {
           id: string
@@ -340,30 +364,6 @@ export type Database = {
           f_table_schema?: unknown | null
           srid?: number | null
           type?: string | null
-        }
-        Relationships: []
-      }
-      spatial_reference_info: {
-        Row: {
-          auth_name: string | null
-          auth_srid: number | null
-          proj4text: string | null
-          srid: number | null
-          srtext: string | null
-        }
-        Insert: {
-          auth_name?: string | null
-          auth_srid?: number | null
-          proj4text?: string | null
-          srid?: number | null
-          srtext?: string | null
-        }
-        Update: {
-          auth_name?: string | null
-          auth_srid?: number | null
-          proj4text?: string | null
-          srid?: number | null
-          srtext?: string | null
         }
         Relationships: []
       }
