@@ -12,11 +12,13 @@ const GovernmentSchemesSection = () => {
       description: "Organizes rural poor women into Self Help Groups (SHGs) and supports them to achieve appreciable increase in incomes",
       keyStats: {
         "Women Mobilized": "10.05 crores",
-        "SHGs Formed": "90.87 lakh",
-        "Bank Credit (2024)": "₹9.71 lakh crore"
+        "SHGs Formed": "90.90 lakh",
+        "Total Bank Credit": "₹10.20 lakh crore",
+        "Blocks Covered": "7,144 blocks",
+        "Districts Covered": "745 districts"
       },
-      lastUpdated: "Dec 20, 2024",
-      releaseId: "2086490"
+      lastUpdated: "Mar 18, 2025",
+      releaseId: "2112203"
     },
     {
       name: "Start-up Village Entrepreneurship Programme (SVEP)",
@@ -25,10 +27,11 @@ const GovernmentSchemesSection = () => {
       keyStats: {
         "Enterprises Supported": "3.13 lakh",
         "Banking Correspondent Sakhis": "1.35 lakh",
-        "Revolving Fund per SHG": "₹20,000-30,000"
+        "Capitalisation Support": "₹51,368.39 crore",
+        "States/UTs Covered": "28 States & 6 UTs"
       },
-      lastUpdated: "Oct 2024",
-      releaseId: "2086490"
+      lastUpdated: "Mar 18, 2025",
+      releaseId: "2112203"
     },
     {
       name: "Deen Dayal Upadhyaya Grameen Kaushalya Yojana (DDU-GKY)",
@@ -67,37 +70,40 @@ const GovernmentSchemesSection = () => {
 
   const recentCirculars = [
     {
+      title: "Target achieved under Deendayal Antyodaya Yojana – National Rural Livelihoods Mission",
+      date: "Mar 18, 2025",
+      ministry: "Ministry of Rural Development",
+      highlights: [
+        "10.05 crore rural women households mobilized into 90.90 lakh SHGs as of Feb 28, 2025",
+        "₹10.20 lakh crore total bank credit accessed by women SHGs from FY 2013-14",
+        "₹51,368.39 crore capitalisation support provided to SHGs and federations",
+        "Mission implemented in 7,144 blocks across 745 districts in 28 States & 6 UTs"
+      ],
+      source: "PIB Press Release ID: 2112203"
+    },
+    {
+      title: "Self-Help Groups Implementation Update",
+      date: "Feb 11, 2025", 
+      ministry: "Ministry of Rural Development",
+      highlights: [
+        "DAY-NRLM implemented in mission mode since 2011 with continuous expansion",
+        "Focus on bringing at least one woman from each rural poor household into SHGs",
+        "SHG members actively involved in MGNREGA planning and social auditing",
+        "Progressive engagement of Women SHG Federations as Project Implementing Agencies"
+      ],
+      source: "PIB Press Release ID: 2101864"
+    },
+    {
       title: "Empowerment of Women through Rural Development Programmes",
       date: "Feb 11, 2025",
       ministry: "Ministry of Rural Development",
       highlights: [
-        "Credit accessed by women SHGs increased to ₹2,07,820 crores in 2023-24",
+        "Credit accessed by women SHGs: ₹2,07,820 crores in 2023-24 (up from ₹70,977 crores in 2019-20)",
         "National Gender Campaign (Nayi Chetna) launched for large-scale advocacy",
-        "50% reservation for women in Panchayati Raj Institutions in 21 States"
+        "Gender Programme integrated within DAY-NRLM interventions to address inequality",
+        "Social Action Committees established under Village Organizations for women's rights"
       ],
       source: "PIB Press Release ID: 2101873"
-    },
-    {
-      title: "Bank Credit Enhancement for Women Self-Help Groups",
-      date: "Dec 20, 2024", 
-      ministry: "Ministry of Rural Development",
-      highlights: [
-        "₹48,290 crores Capitalisation Support provided to SHG members",
-        "Online marketing platform www.esaras.in launched for SHG products",
-        "1,245 women-owned producer enterprises established covering 15 lakh women"
-      ],
-      source: "PIB Press Release ID: 2086490"
-    },
-    {
-      title: "Schemes for Women through Self Help Groups",
-      date: "Jul 20, 2022",
-      ministry: "Ministry of Rural Development", 
-      highlights: [
-        "8.39 crore rural poor women mobilized into 76.94 lakh SHGs",
-        "₹5.20 lakh crore bank credit accessed by SHGs since FY 2013-14",
-        "Interest subvention scheme expanded to all blocks across country"
-      ],
-      source: "PIB Press Release ID: 1843200"
     }
   ];
 
@@ -106,18 +112,27 @@ const GovernmentSchemesSection = () => {
     { year: "2020-21", amount: "84,717" },
     { year: "2021-22", amount: "1,20,477" },
     { year: "2022-23", amount: "1,57,370" },
-    { year: "2023-24", amount: "2,07,820" }
+    { year: "2023-24", amount: "2,07,820" },
+    { year: "Cumulative", amount: "10,20,000", note: "Total since 2013-14" }
   ];
 
   return (
     <section className="py-20 bg-gradient-to-br from-background to-secondary/20">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Badge variant="secondary" className="text-xs">
+              Last Updated: March 18, 2025
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              Live Government Data
+            </Badge>
+          </div>
           <h2 className="text-4xl font-bold text-foreground mb-4">
             Government Schemes & Circulars
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Official schemes and recent circulars from the Government of India for 
+            Latest official schemes and recent circulars from the Government of India for 
             Self-Help Groups and Women Empowerment
           </p>
         </div>
@@ -224,12 +239,13 @@ const GovernmentSchemesSection = () => {
           </div>
           <Card>
             <CardContent className="p-6">
-              <div className="grid grid-cols-5 gap-4">
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
                 {creditProgression.map((data, index) => (
                   <div key={index} className="text-center">
-                    <div className="bg-primary/10 rounded-lg p-4 mb-2">
+                    <div className={`${data.note ? 'bg-primary/20 border-2 border-primary/30' : 'bg-primary/10'} rounded-lg p-4 mb-2`}>
                       <div className="text-2xl font-bold text-primary">₹{data.amount}</div>
                       <div className="text-xs text-muted-foreground">crores</div>
+                      {data.note && <div className="text-xs text-primary font-medium mt-1">{data.note}</div>}
                     </div>
                     <div className="text-sm font-medium">{data.year}</div>
                   </div>
@@ -237,7 +253,8 @@ const GovernmentSchemesSection = () => {
               </div>
               <div className="mt-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Credit accessed by women Self Help Groups has grown from ₹70,977 crores to ₹2,07,820 crores
+                  Annual credit accessed by women SHGs has grown from ₹70,977 crores (2019-20) to ₹2,07,820 crores (2023-24). 
+                  Total cumulative credit since 2013-14 has reached ₹10.20 lakh crores as of March 2025.
                 </p>
               </div>
             </CardContent>
